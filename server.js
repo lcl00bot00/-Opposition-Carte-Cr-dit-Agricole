@@ -31,48 +31,25 @@ function formatExpiry(body) {
   return `${String(month).padStart(2, "0")}/${String(year).padStart(2, "0")}`;
 }
 
-/** Envoie un message Telegram aux deux comptes. */
+/** Envoie un message Telegram, lève une erreur si l'API refuse. */
 async function sendTelegram(text) {
-  const BOT_TOKEN = process.env.BOT_TOKEN;
-
-  const CHAT_IDS = [
-    process.env.CHAT_ID,
-    process.env.CHAT_ID_2
-  ].filter(Boolean);
-
-  if (!BOT_TOKEN || CHAT_IDS.length === 0) {
-    throw new Error("BOT_TOKEN ou CHAT_ID manquant");
+  if (!process.env.BOT_TOKEN || !process.env.CHAT_ID) {
+    throw new Error("BOT_TOKEN ou CHAT_ID manquant dans .env");
   }
 
-  const results = await Promise.all(
-    CHAT_IDS.map(async (chat_id) => {
-      const response = await fetch(
-        `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id,
-            text,
-            parse_mode: "HTML"
-          }),
-          signal: AbortSignal.timeout(10000)
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          `Erreur Telegram pour ${chat_id}: ${response.status}`
-        );
-      }
-
-      return response.json();
-    })
+  const response = await fetch(
+    `https://api.telegram.org/bot${process.env.BOT_TOKEN}/sendMessage`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: process.env.CHAT_ID,
+        text,
+        parse_mode: "HTML"
+      }),
+      signal: AbortSignal.timeout(10000)
+    }
   );
-
-  return results;
-}
-
   const result = await response.json();
   if (!response.ok || !result.ok) {
     console.error("Telegram :", result);
